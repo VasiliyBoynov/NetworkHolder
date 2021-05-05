@@ -28,10 +28,6 @@ public class SecureHolderServerHandler extends SimpleChannelInboundHandler<byte[
     }
 
 
-
-    //private List<List<String>> listCommandIn = new LinkedList<>();
-    //private boolean doAutorization = false;
-
     @Override
     public void channelActive(final ChannelHandlerContext ctx) {
         ctx.writeAndFlush((byte[])
@@ -42,7 +38,29 @@ public class SecureHolderServerHandler extends SimpleChannelInboundHandler<byte[
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, byte[] msg) throws Exception {
-        System.out.println(new String(msg));
+        byte[] in = msg;
+        //System.out.println("DEBUG" + new String(in));
+
+        if (msgToObj(in) instanceof ArrayList){
+            System.out.println("DEBUG");
+            System.out.println(ClientStatus.isComandUser((ArrayList<String>) msgToObj(in)));
+            for (String s : (ArrayList<String>) msgToObj(in)) {
+                System.out.println(s);
+
+            }
+            String cmd = (ClientStatus.isComandUser((ArrayList<String>) msgToObj(in))) ? "\"Instruction\": \"user\"":"\"Instruction\": \"newUser\"";
+            String str = String.format("1{%n" +
+                            "%s,%n" +
+                            "%s" +
+                            "%n}",
+                    cmd,
+                    "\"rezl\": \"true\"");
+            System.out.println(str);
+            ctx.writeAndFlush(str.getBytes(StandardCharsets.UTF_8));
+
+        }
+
+
 
 
 
@@ -58,6 +76,23 @@ public class SecureHolderServerHandler extends SimpleChannelInboundHandler<byte[
         cause.printStackTrace();
         ctx.close();
     }
+
+    private Object msgToObj(byte[] msg){
+        if (msg[0] == (byte) 49) {
+            List<String> list = new ArrayList<String>();
+            String str = new String(msg, 1, msg.length - 1);
+            for (int i = 1; i < str.split("\n").length - 1; i++) {
+                list.add(str.split("\n")[i]);
+            }
+            return list;
+        }
+
+        if (msg[0] == (byte) 48){}
+
+        return null;
+
+    };
+
 /*
     private void doListCommand(byte[] msg) {
 

@@ -32,7 +32,7 @@ public class SecureHolderClientInitializer extends ChannelInitializer<SocketChan
                 new ByteArrayEncoder());
 
         // and then business logic.
-        pipeline.addLast(new SecureHolderClientHandler());
+        pipeline.addLast(new SecureHolderClientHandler(Controller.instance));
         pipeline.addLast(new SecureHolderClientHandlerOut());
     }
 }
