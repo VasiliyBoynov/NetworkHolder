@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 
 import Client.Commands.Authorization;
 import Client.Commands.Commands;
+import Client.Commands.SendFile;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 
@@ -61,10 +62,13 @@ public class Controller implements AutoCloseable{
         this.finishAuthorisation.set(finishAuthorisation);
     }
 
+
     public void work() throws Exception {
         reader = new BufferedReader(new InputStreamReader(System.in));
+        FileMenager fm = new FileMenager();
         String commandLine;
         while (true) {
+            System.out.print(fm.getTmpPath()+"> ");
             commandLine = reader.readLine();
 
             if (commandLine.equals("exit")) {
@@ -73,18 +77,42 @@ public class Controller implements AutoCloseable{
 
 
             if (commandLine.equals("newUser")){
-                commandLine=null;
+
                 autorization(Commands.newUser);
             }
 
             if (commandLine.equals("user")){
-                commandLine=null;
+
                 autorization(Commands.user);
             }
 
-            if (commandLine.equals("send")){
-                commandLine=null;
-                sendFile();
+            if (commandLine.equals("send") ){
+
+                if (getAuthorization().get()) {
+                    sendFile(fm.getTmpPath());
+                } else {
+                    System.out.println("Вы не прошли процедуру авторизации.\nДля старта процедуры введите командное слово \"user\" или \"newUser\" ");
+                }
+            }
+            if (commandLine.startsWith("ls")){
+                if (commandLine.equals("ls") | commandLine.split(" ").length==1){
+                    fm.ls();
+                } else {
+                    Path path = Paths.get(commandLine.split(" ")[1]);
+                    try {
+                        fm.ls(path);
+                    } catch (NullPointerException e) {
+                        System.out.println("Папка отсутствует :" + commandLine.split(" ")[1]);
+                    }
+                }
+            }
+
+            if (commandLine.trim().split(" ")[0].equals("cd") & commandLine.trim().split(" ").length>1) {
+
+                fm.cd(Paths.get(commandLine.trim().split(" ")[1]));
+            } else {
+                if (commandLine.trim().split(" ")[0].equals("cd")) {
+                    fm.cd(); }
             }
 
 
@@ -160,57 +188,48 @@ public class Controller implements AutoCloseable{
         startAuthorisation.set(true);
 
         System.out.println("Wait answer from Server");
-
+        String rezl;
         while (!getFinishAuthorisation().get()){}
 
-        String rezl = (getAuthorization().get())? "Authorization was successful":"Authorization was unsuccessful";
+
+         rezl = (getAuthorization().get())? "Authorization was successful":"Authorization was unsuccessful";
         System.out.println(rezl);
+
 
     }
 
-    public void sendFile() throws IOException {
+    public void sendFile(Path tmpPath) throws IOException {
+
         System.out.println("Для выхода из режима отпрравки файла на сервер наберите \"exit\"");
         String str;
-        Path startPath = Paths.get("");
-        Path tmpPath = startPath.toAbsolutePath();
+
         while (true){
             System.out.println("Введите путь к файлу, который хотите синхронизовать с облачным хранилищем");
             str = reader.readLine();
             if (str.equals("exit")) break;
-            if (str.startsWith("ls")){
-                if (str.equals("ls") | str.split(" ").length==1){
-                    ls(tmpPath);
-                } else {
-                    Path path = Paths.get(str.split(" ")[1]);
-                    try {
-                        ls(path);
-                    } catch (NullPointerException e) {
-                        System.out.println("Папка отсутствует :" + str.split(" ")[1]);
-                    }
-
-                }
 
 
+            Path pathIn = (Paths.get(str).isAbsolute()) ? Paths.get(str):Paths.get(tmpPath.toString()+"\\"+str);
+            if (pathIn.toFile().isFile()){
+                SendFile sendFile = new SendFile(pathIn);
+                ch.writeAndFlush(sendFile.objToByte());
+
+
+            } else {
+                System.out.println("uncorrected path to file");
             }
+
+
+
+
+
+
         }
     }
 
-    private void ls(Path path){
-        Path pathIn = (path.isAbsolute()) ? path:path.toAbsolutePath();
-        System.out.println(pathIn);
-        for (File f : Arrays.stream(pathIn.toFile().listFiles())
-                .filter(file -> file.isDirectory())
-                .sorted()
-                .collect(Collectors.toList())) {
-            System.out.println(f.getName());
-        }
-        for (File f : Arrays.stream(pathIn.toFile().listFiles())
-                .filter(file -> file.isFile())
-                .sorted()
-                .collect(Collectors.toList())) {
-            System.out.println(f.getName());
-        }
-    }
+
+
+
 
     @Override
     public void close() throws Exception {

@@ -1,5 +1,6 @@
 package Client.Commands;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
     public abstract class Instruction {
@@ -15,7 +16,14 @@ import java.util.List;
 
         public abstract List<String> toJSON();
 
-        public abstract byte[] objToByte();
+        public byte[] objToByte() {
+            StringBuilder str = new StringBuilder();
+            str.append((byte) 1);
+            for (String s : toJSON()) {
+                str.append(s);
+            }
+            return str.toString().getBytes(StandardCharsets.UTF_8);
+        }
 
 
     }
