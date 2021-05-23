@@ -4,25 +4,25 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 
 public class SetFile extends Message{
-    private Path path;
-    private FileTime lastModified;
+    private String path;
+    private long lastModified;
     private long sizeFile;
     private long position;
     private byte[] data;
 
-    public Path getPath() {
+    public String getPath() {
         return path;
     }
 
-    public void setPath(Path path) {
+    public void setPath(String path) {
         this.path = path;
     }
 
-    public FileTime getLastModified() {
+    public long getLastModified() {
         return lastModified;
     }
 
-    public void setLastModified(FileTime lastModified) {
+    public void setLastModified(long lastModified) {
         this.lastModified = lastModified;
     }
 

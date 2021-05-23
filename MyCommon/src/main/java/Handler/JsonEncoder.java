@@ -14,6 +14,7 @@ public class JsonEncoder extends MessageToMessageEncoder<Message> {
     protected void encode(ChannelHandlerContext channelHandlerContext, Message message, List<Object> list) throws Exception {
         byte[] bytes = OBJECT_MAPPER.writeValueAsBytes(message);
         list.add(bytes);
-        System.out.println("DEBUG JSON ENCODER" + new String(bytes));
+        //System.out.println("DEBUG JSON ENCODER" + new String(bytes));
+        //System.out.println("DEBUG JSON ENCODER length:" + bytes.length);
     }
 }

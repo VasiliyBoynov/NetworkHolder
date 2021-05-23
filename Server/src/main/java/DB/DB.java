@@ -1,5 +1,8 @@
 package DB;
 
+import Commands.SetFile;
+
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.*;
@@ -17,6 +20,68 @@ public class DB {
             troubles.printStackTrace();
         }
     }
+
+    public void updateStatus(String name_file_server, boolean status){
+        PreparedStatement preparedStatement = null;
+        try {
+            preparedStatement = connection.prepareStatement(SQLCommand.SQLUpdateStatus.getCommand());
+            //preparedStatement.setBoolean(1,status);
+            //String sql = String.format("UPDATE 'Files' SET Status = 1 where name_file_server = %s",name_file_server);
+            //preparedStatement.executeUpdate(sql);
+            preparedStatement.setString(2,name_file_server);
+            preparedStatement.setBoolean(1,status);
+            //preparedStatement.executeQuery();
+            preparedStatement.executeUpdate();
+
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+
+
+    }
+
+    public MessageDB setFile(String nickName, SetFile setFile){
+        PreparedStatement preparedStatement = null;
+        int id_user=0;
+        try {
+            preparedStatement = connection.prepareStatement(SQLCommand.SQLSelectNickId.getCommand());
+            preparedStatement.setString(1,nickName);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()){
+                id_user=resultSet.getInt("id_user") ;
+
+            } else {
+                return new MessageDB(false,"User with this nickname does not exist");
+            }
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+
+        try{
+            preparedStatement = connection.prepareStatement(SQLCommand.SQLSelectFileName.getCommand());
+            preparedStatement.setInt(1,id_user);
+            preparedStatement.setString(2,setFile.getPath());
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()){
+                //System.out.println(resultSet.getString("name_file_server"));
+                //resultSet.getString("name_file_server");
+                return new MessageDB(true, resultSet.getString("name_file_server"));
+            }
+            else{
+                preparedStatement = connection.prepareStatement(SQLCommand.SQLInsertFile.getCommand());
+                preparedStatement.setInt(1,id_user);
+                preparedStatement.setString(2,setFile.getPath());
+                preparedStatement.setString(3,getFileNameHash(nickName,setFile.getPath()));
+                preparedStatement.setString(4,String.valueOf(setFile.getLastModified()));
+                preparedStatement.executeUpdate();
+                return new MessageDB(true,getFileNameHash(nickName,setFile.getPath()));
+            }
+
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+
+        return new MessageDB(false,"throwables with DB");}
 
     public MessageDB checkUser(String nickName, String password){
         PreparedStatement preparedStatement = null;
@@ -83,6 +148,18 @@ public class DB {
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
+    }
+
+    private String getFileNameHash(String nickName, String fileName){
+        String str = nickName + fileName;
+        String fileNameHash = null;
+        try {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        fileNameHash = bytesToHex(md.digest(str.getBytes()));
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return fileNameHash;
     }
 
 

@@ -20,10 +20,14 @@ public class SecureHolderClientHandler extends SimpleChannelInboundHandler<Messa
         System.out.printf("DEBUG:"+msg);
         System.out.println(msg.getClass().getName());
         if (msg instanceof Answer & ((Answer) msg).getTypeMessage()!=null){
-            if (((Answer) msg).getTypeMessage().equals("Autorization")){
-                controller.setAuthorization(((Answer) msg).isRezl());
-                controller.setTxt(((Answer) msg).getText());
+            Answer msgIn = (Answer) msg;
+            if ( msgIn.getTypeMessage().equals("Autorization")){
+                controller.setAuthorization(msgIn.isRezl());
+                controller.setTxt(msgIn.getText());
                 controller.setFinishAuthorisation(true);
+            }
+            if ( msgIn.getTypeMessage().equals("setFile")){
+                controller.setFinchSetFile(msgIn.isRezl());
             }
 
 

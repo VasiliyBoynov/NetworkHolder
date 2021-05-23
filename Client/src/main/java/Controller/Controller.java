@@ -1,25 +1,20 @@
 package Controller;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 
 
-import Commands.Message;
 import Commands.NewUser;
+import Commands.SetFile;
 import Commands.User;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
 
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+
+import static java.nio.file.Files.getLastModifiedTime;
 
 public class Controller implements AutoCloseable{
 
@@ -28,11 +23,24 @@ public class Controller implements AutoCloseable{
     private AtomicBoolean authorization = new AtomicBoolean();
     private AtomicBoolean startAuthorisation = new AtomicBoolean();
     private AtomicBoolean finishAuthorisation = new AtomicBoolean();
+    private AtomicBoolean startSetFile = new AtomicBoolean();
+    private AtomicBoolean finchSetFile = new AtomicBoolean();
     private Channel ch;
     private String txt;
     private ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    public final int MAX_PACKAGE_BYTE=60000;
+    public final int MAX_PACKAGE_BYTE=40000;
+    public final int TIME_OUT_S=600;
+
+
+
+    public AtomicBoolean getFinchSetFile() {
+        return finchSetFile;
+    }
+
+    public void setFinchSetFile(boolean finchSetFile) {
+        this.finchSetFile.set(finchSetFile);
+    }
 
     public String getTxt() {
         return txt;
@@ -58,6 +66,8 @@ public class Controller implements AutoCloseable{
 
     private final static byte lengthPassword = 3;
 
+    private FileMenager fm = new FileMenager();
+
 
     public void setCh(Channel ch) {
         this.ch = ch;
@@ -79,7 +89,7 @@ public class Controller implements AutoCloseable{
     public void work() throws Exception {
 
         reader = new BufferedReader(new InputStreamReader(System.in));
-        FileMenager fm = new FileMenager();
+
         String commandLine;
         while (true) {
             System.out.print(fm.getTmpPath()+"> ");
@@ -201,6 +211,7 @@ public class Controller implements AutoCloseable{
             while (!getFinishAuthorisation().get()){}
             rezl = (getAuthorization().get())? "Authorization was successful":"Authorization was unsuccessful\n"+txt;
             System.out.println(rezl);
+            System.out.print(fm.getTmpPath()+"> ");
 
         });
 
@@ -208,7 +219,7 @@ public class Controller implements AutoCloseable{
 
     }
 
-    public void sendFile(Path tmpPath) throws IOException {
+    public void sendFile(Path tmpPath) throws IOException, InterruptedException {
 
         System.out.println("Для выхода из режима отпрравки файла на сервер наберите \"exit\"");
         String str;
@@ -221,7 +232,69 @@ public class Controller implements AutoCloseable{
 
             Path pathIn = (Paths.get(str).isAbsolute()) ? Paths.get(str):Paths.get(tmpPath.toString()+"\\"+str);
             if (pathIn.toFile().isFile()){
-                System.out.println("Start send File");
+                executor.submit(()->{
+                    startSetFile.set(true);
+                    finchSetFile.set(false);
+                    System.out.println("Start send File"+pathIn);
+                    try(RandomAccessFile accessFile = new RandomAccessFile(pathIn.toFile(), "r")){
+                        long length = pathIn.toFile().length();
+                        long position = accessFile.getFilePointer();
+                        long lastModified = getLastModifiedTime(pathIn).toMillis();
+                        long available = length - position;
+
+
+                        while (available > 0) {
+                            SetFile setFile = new SetFile();
+                            setFile.setPath(pathIn.toString());
+                            setFile.setLastModified(lastModified);
+                            setFile.setSizeFile(length);
+
+                            byte[] buffer;
+                            if (available > MAX_PACKAGE_BYTE) {
+                                buffer = new byte[MAX_PACKAGE_BYTE];
+                            } else {
+                                buffer = new byte[(int) available];
+                            }
+                            accessFile.read(buffer);
+                            setFile.setData(buffer);
+                            setFile.setPosition(position);
+                        /*try {
+                            ch.writeAndFlush(setFile).sync();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }*/
+                            ch.writeAndFlush(setFile).sync();
+                            position =  accessFile.getFilePointer();
+                            available = length - position;
+                        }
+                        int count=0;
+                        while (!finchSetFile.get()){
+                            Thread.sleep(1000);
+                            count++;
+                            if (count>=TIME_OUT_S){
+                                startSetFile.set(false);
+                                finchSetFile.set(false);
+                                System.out.printf("Finish send File %s unsuccessful%n",pathIn);
+                                break;
+                            }
+
+                        }
+                        if(finchSetFile.get()){
+                        startSetFile.set(false);
+                        finchSetFile.set(false);
+                            System.out.printf("Finish send File %s successful%n",pathIn);
+                        }
+                        System.out.print(fm.getTmpPath()+"> ");
+
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                });
+
 
 
                 //SendFile sendFile = new SendFile(pathIn);

@@ -15,6 +15,6 @@ public class JsonDecoder extends MessageToMessageDecoder<byte[]> {
     protected void decode(ChannelHandlerContext channelHandlerContext, byte[] bytes, List<Object> list) throws Exception {
         Message message = OBJECT_MAPPER.readValue(bytes, Message.class);
         list.add(message);
-        System.out.println("DEBUG JSON DECODER" + new String(bytes));
+        //System.out.println("DEBUG JSON DECODER" + new String(bytes));
     }
 }

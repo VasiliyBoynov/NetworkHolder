@@ -12,6 +12,10 @@ public class FileMenager {
     private Path tmpPath = startPath.toAbsolutePath();
 
     public Path getTmpPath() {
+        if (tmpPath==null){
+            return Paths.get("");
+        }
+            else
         return tmpPath;
     }
 
@@ -50,7 +54,7 @@ public class FileMenager {
     }
 
     public void cd(){
-        tmpPath = tmpPath.getParent();
+        tmpPath = (tmpPath.getParent()!=null)? tmpPath.getParent():tmpPath;
     }
     public void cd(Path path){
         Path pathIn = (path.isAbsolute()) ? path:Paths.get(tmpPath.toString()+"\\"+path.toString());
