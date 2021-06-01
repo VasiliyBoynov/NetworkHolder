@@ -1,5 +1,3 @@
-package Server;
-
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.DefaultChannelPromise;
@@ -29,8 +27,8 @@ public final class Server {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .handler(new LoggingHandler(LogLevel.INFO));
-                    //.childHandler(new SecureHolderServerInitializer(sslCtx));
+                    .handler(new LoggingHandler(LogLevel.INFO))
+                    .childHandler(new SecureHolderServerInitializer(sslCtx));
 
             ChannelFuture future = b.bind(PORT).sync();
             System.out.println("Server started");
@@ -43,5 +41,3 @@ public final class Server {
         }
     }
 }
-
-
