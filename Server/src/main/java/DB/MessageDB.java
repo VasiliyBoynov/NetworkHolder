@@ -1,12 +1,25 @@
 package DB;
 
+import Commands.Info;
+
+import java.util.ArrayList;
+
 public class MessageDB{
     private boolean rezl;
     private String txt;
+    private ArrayList<Info> list;
 
     public MessageDB(boolean rezl, String txt) {
         this.rezl = rezl;
         this.txt = txt;
+    }
+
+    public ArrayList<Info> getList() {
+        return list;
+    }
+
+    public void setList(ArrayList<Info> list) {
+        this.list = list;
     }
 
     public MessageDB() {}

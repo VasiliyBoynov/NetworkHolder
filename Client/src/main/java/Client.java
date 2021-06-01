@@ -13,6 +13,8 @@ import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.ConnectException;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 
 public final class Client {
@@ -40,7 +42,13 @@ public final class Client {
 
 
             ch.closeFuture().sync();
-        } finally {
+        } catch ( ConnectException e){
+            System.out.println("Server is not available");
+
+        } catch (SocketException e) {
+            System.out.println("disconnection, server is not available");
+            Controller.instance.close();
+        }finally {
             // The connection is closed automatically on shutdown.
             group.shutdownGracefully();
         }

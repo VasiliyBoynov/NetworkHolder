@@ -1,9 +1,6 @@
 package Commands;
 
-import java.nio.file.Path;
-import java.nio.file.attribute.FileTime;
-
-public class GetFile extends  Message{
+public class DeleteFile extends Message{
     private String path;
 
 
@@ -14,5 +11,4 @@ public class GetFile extends  Message{
     public void setPath(String path) {
         this.path = path;
     }
-
 }

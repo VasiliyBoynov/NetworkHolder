@@ -1,11 +1,21 @@
 package Commands;
 
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Answer extends Message{
     private String typeMessage;
     private boolean rezl;
     private String text;
+    private ArrayList<Info> list;
+
+    public ArrayList<Info> getList() {
+        return list;
+    }
+
+    public void setList(ArrayList<Info> list) {
+        this.list = list;
+    }
 
     public String getTypeMessage() {
         return typeMessage;

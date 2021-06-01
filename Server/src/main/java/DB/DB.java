@@ -1,11 +1,13 @@
 package DB;
 
+import Commands.Info;
 import Commands.SetFile;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
 
 public class DB {
@@ -21,16 +23,66 @@ public class DB {
         }
     }
 
-    public void updateStatus(String name_file_server, boolean status){
+    public MessageDB updateStatusDel(int idUser,String path_client){
+        PreparedStatement preparedStatement = null;
+        try {
+            preparedStatement = connection.prepareStatement(SQLCommand.SQLSelectFileName.getCommand());
+            preparedStatement.setInt(1,idUser);
+            preparedStatement.setString(2,path_client);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()){
+                String str = resultSet.getString("name_file_server");
+                int idFile = resultSet.getInt("id_files");
+                preparedStatement = connection.prepareStatement(SQLCommand.SQLUpdateStatusDelete.getCommand());
+                preparedStatement.setBoolean(1,true);
+                preparedStatement.setInt(2,idFile);
+                preparedStatement.executeUpdate();
+                return new MessageDB(true,str);
+            }
+            else return new MessageDB(false,"File don't find ");
+        } catch (SQLException throwables){
+            return new MessageDB(false,"DB isn't available");
+        }
+    }
+
+    public void updateSizeArray(String nickName){
+        PreparedStatement preparedStatement = null;
+
+        int id_user=0;
+        long size=0;
+        try {
+
+            preparedStatement = connection.prepareStatement(SQLCommand.SQLFindSizeArray.getCommand());
+            preparedStatement.setString(1,nickName);
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()){
+                size+=resultSet.getInt("size");
+            }
+            preparedStatement = connection.prepareStatement(SQLCommand.SQLUpdateSizeArray.getCommand());
+            preparedStatement.setLong(1,size);
+            preparedStatement.setString(2,nickName);
+            preparedStatement.executeUpdate();
+
+
+
+
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+
+
+    };
+
+    public void updateStatus(int idUser,String name_file_server, boolean status,boolean del){
         PreparedStatement preparedStatement = null;
         try {
             preparedStatement = connection.prepareStatement(SQLCommand.SQLUpdateStatus.getCommand());
-            //preparedStatement.setBoolean(1,status);
-            //String sql = String.format("UPDATE 'Files' SET Status = 1 where name_file_server = %s",name_file_server);
-            //preparedStatement.executeUpdate(sql);
-            preparedStatement.setString(2,name_file_server);
+
             preparedStatement.setBoolean(1,status);
-            //preparedStatement.executeQuery();
+            preparedStatement.setBoolean(2,del);
+            preparedStatement.setString(3,name_file_server);
+            preparedStatement.setInt(4,idUser);
             preparedStatement.executeUpdate();
 
         } catch (SQLException throwables) {
@@ -40,22 +92,48 @@ public class DB {
 
     }
 
+    public MessageDB getFile(int idUser, String path_client ){
+        PreparedStatement preparedStatement = null;
+        try {
+            preparedStatement = connection.prepareStatement(SQLCommand.SQLSelectFileName.getCommand());
+            preparedStatement.setInt(1,idUser);
+            preparedStatement.setString(2,path_client);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()){
+                return new MessageDB(true,resultSet.getString("name_file_server"));
+            } else {
+                return new MessageDB(false,"Dont find file");
+            }
+
+
+        } catch (SQLException throwables) {
+            return new MessageDB(false,"DB isn't available");
+        }
+    }
+
     public MessageDB setFile(String nickName, SetFile setFile){
         PreparedStatement preparedStatement = null;
         int id_user=0;
+        int maxSizeGB=0;
+        long size=0;
+        long maxSizeB = 0;
         try {
             preparedStatement = connection.prepareStatement(SQLCommand.SQLSelectNickId.getCommand());
             preparedStatement.setString(1,nickName);
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()){
                 id_user=resultSet.getInt("id_user") ;
-
+                maxSizeGB=resultSet.getInt("MaxSizeArrayGB");
+                maxSizeB = (long) maxSizeGB*1024*1024*1024;
+                size=resultSet.getLong("SizeArray");
             } else {
                 return new MessageDB(false,"User with this nickname does not exist");
             }
         } catch (SQLException throwables) {
-            throwables.printStackTrace();
+            return new MessageDB(false,"throwables with DB");
         }
+
+
 
         try{
             preparedStatement = connection.prepareStatement(SQLCommand.SQLSelectFileName.getCommand());
@@ -65,20 +143,40 @@ public class DB {
             if (resultSet.next()){
                 //System.out.println(resultSet.getString("name_file_server"));
                 //resultSet.getString("name_file_server");
+                if (resultSet.getBoolean("del")){
+                    if (maxSizeB<(setFile.getSizeFile()+size))
+                        return new MessageDB(false,"Data storage limit has been exceeded, please contact technical customer service to increase the data storage limit.");
+
+                } else {
+                    if (maxSizeB<(setFile.getSizeFile()+size-resultSet.getLong("size")))
+                        return new MessageDB(false,"Data storage limit has been exceeded, please contact technical customer service to increase the data storage limit.");
+
+                }
+                preparedStatement = connection.prepareStatement(SQLCommand.SQLUpdateFile.getCommand());
+                preparedStatement.setString(1,String.valueOf(setFile.getLastModified()));
+                preparedStatement.setBoolean(2,false);
+                preparedStatement.setBoolean(3,false);
+                preparedStatement.setLong(4,setFile.getSizeFile());
+                preparedStatement.executeUpdate();
                 return new MessageDB(true, resultSet.getString("name_file_server"));
             }
-            else{
+            else {
+                long sizeNewFile = setFile.getSizeFile();
+
+                if (maxSizeB<(setFile.getSizeFile()+size))
+                    return new MessageDB(false,"Data storage limit has been exceeded, please contact technical customer service to increase the data storage limit.");
+
                 preparedStatement = connection.prepareStatement(SQLCommand.SQLInsertFile.getCommand());
                 preparedStatement.setInt(1,id_user);
                 preparedStatement.setString(2,setFile.getPath());
                 preparedStatement.setString(3,getFileNameHash(nickName,setFile.getPath()));
                 preparedStatement.setString(4,String.valueOf(setFile.getLastModified()));
+                preparedStatement.setLong(5,setFile.getSizeFile());
                 preparedStatement.executeUpdate();
                 return new MessageDB(true,getFileNameHash(nickName,setFile.getPath()));
             }
 
         } catch (SQLException throwables) {
-            throwables.printStackTrace();
         }
 
         return new MessageDB(false,"throwables with DB");}
@@ -101,6 +199,51 @@ public class DB {
         } catch (SQLException throwables) {
             return new MessageDB(false,"Don't connect to database");
         }
+    }
+
+    public MessageDB infoUser(String nickName){
+        PreparedStatement preparedStatement = null;
+        int idUser=0;
+        try {
+            preparedStatement = connection.prepareStatement(SQLCommand.SQLSelectNickId.getCommand());
+            preparedStatement.setString(1,nickName);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()){
+                idUser=resultSet.getInt("id_user") ;
+                return new MessageDB(true,String.valueOf(idUser));
+            } else {
+                return new MessageDB(false,"User with this nickname does not exist");
+            }
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+            return new MessageDB(false,"Trebles with DB ");
+        }
+
+    }
+
+    public MessageDB listFile(int idUser){
+        PreparedStatement preparedStatement = null;
+        ArrayList<Info> list = new ArrayList<Info>();
+        try {
+            preparedStatement = connection.prepareStatement(SQLCommand.SQLSelectFileInfo.getCommand());
+            preparedStatement.setInt(1,idUser);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()){
+                Info info = new Info();
+                info.setPath(resultSet.getString("path_client"));
+                info.setLastModifyFile(resultSet.getString("lastTimeModif"));
+                info.setSize(resultSet.getLong("size"));
+                list.add(info);
+            }
+            MessageDB messageDB = new MessageDB(true,"");
+            messageDB.setList(list);
+            return messageDB;
+
+        } catch (SQLException throwables) {
+            list = null;
+            return new MessageDB(false,"Trebles with DB");
+        }
+
     }
 
     public MessageDB addUser(String nickName, String password)  {

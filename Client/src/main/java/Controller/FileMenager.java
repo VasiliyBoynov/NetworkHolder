@@ -4,7 +4,10 @@ package Controller;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class FileMenager {
@@ -35,6 +38,29 @@ public class FileMenager {
             System.out.println(f.getName());
         }
     }
+    public static List<Path> getLS(Path pathIn){
+        //Path pathIn = (path.isAbsolute()) ? path:path.toAbsolutePath();
+        ArrayList<Path> listFile = new ArrayList<>();
+        ArrayList<Path> listDirectory = new ArrayList<>();
+        if (pathIn.toFile().isFile()) {
+            listFile.add(pathIn);
+        } else {
+            listDirectory.add(pathIn);
+        }
+        while(listDirectory.size()>0){
+            Path tmp = listDirectory.get(listDirectory.size()-1);
+            listDirectory.remove(listDirectory.size()-1);
+            for (File f : tmp.toFile().listFiles()) {
+                if (f.isFile()){
+                    listFile.add(f.toPath());
+                } else {
+                    listDirectory.add(f.toPath());
+                }
+            }
+        }
+        return listFile;
+    }
+
     public void ls(){
 
         Path pathIn = (tmpPath.isAbsolute()) ? tmpPath:tmpPath.toAbsolutePath();
